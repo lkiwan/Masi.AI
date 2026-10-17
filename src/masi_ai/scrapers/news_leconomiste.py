@@ -36,6 +36,19 @@ def _sitemap_urls(session, sitemap_url: str, limit: int) -> list[tuple[str, date
     return out
 
 
+def _fix_bogus_year(dt):
+    """L'Economiste's site stamps recent articles with year 1991 in every
+    date field (verified: 'Le 17/10/1991' on an article published 17/10/2026
+    - day/month are right, only the year is wrong). We only ever collect
+    the head of the newest sitemaps, so a 1991-dated entry there is a
+    recent article with broken metadata, not a genuine 1991 article.
+    Capped at today to avoid future dates."""
+    if dt is not None and dt.year == 1991:
+        now = datetime.now(timezone.utc)
+        return min(dt.replace(year=now.year), now)
+    return dt
+
+
 def _parse_article(session, url: str, fallback_date) -> dict | None:
     from bs4 import BeautifulSoup
 
@@ -56,6 +69,7 @@ def _parse_article(session, url: str, fallback_date) -> dict | None:
             published = datetime.fromisoformat(meta["content"])
         except ValueError:
             pass
+    published = _fix_bogus_year(published)
     # Divi theme: article body lives under .et-l--body / et_pb_section
     body_el = soup.select_one(".et-l--body") or soup.select_one("article")
     body = body_el.get_text("\n", strip=True) if body_el else None
@@ -68,21 +82,36 @@ def _parse_article(session, url: str, fallback_date) -> dict | None:
 def collect_leconomiste_news(max_articles: int = 40, workers: int = 8) -> dict:
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+
     session = build_session({"Referer": "https://www.leconomiste.com/"})
     r = get_with_backoff(session, SITEMAP_INDEX, timeout=40)
     sitemaps = [u for u in LOC_RE.findall(r.text) if "post-sitemap" in u]
 
+    # Sitemaps are numbered chronologically (post-sitemap.xml = oldest,
+    # highest number = newest). Traverse newest-first so we always get the
+    # latest articles. (lastmod dates are unreliable on this site.)
+    def _sitemap_num(u: str) -> int:
+        m = re.search(r"post-sitemap(\d*)\.xml", u)
+        return int(m.group(1) or 1) if m else 0
+
+    sitemaps.sort(key=_sitemap_num, reverse=True)
+
+    # NOTE: lastmod dates in these sitemaps are bogus (e.g. 1991), so we rely
+    # on sitemap order instead: post-sitemap.xml holds the newest articles.
+    # The same URL can appear in several sitemap pages -> dedupe by URL.
     candidates: list[tuple[str, datetime | None]] = []
+    seen_urls: set[str] = set()
     for sm in sitemaps:
         try:
-            candidates.extend(_sitemap_urls(session, sm, max_articles))
+            for url, pub in _sitemap_urls(session, sm, max_articles):
+                if url not in seen_urls:
+                    seen_urls.add(url)
+                    candidates.append((url, pub))
         except Exception as e:  # noqa: BLE001
             log.warning("sitemap failed %s: %s", sm, e)
         if len(candidates) >= max_articles * 2:
             break
-
-    # newest first
-    candidates.sort(key=lambda x: x[1] or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
 
     with session_scope() as db:
         existing = {u for (u,) in db.query(NewsArticle.url).filter(
@@ -100,8 +129,10 @@ def collect_leconomiste_news(max_articles: int = 40, workers: int = 8) -> dict:
     inserted = 0
     with session_scope() as db:
         for art in arts:
-            db.add(NewsArticle(**art))
-            inserted += 1
+            stmt = pg_insert(NewsArticle).values(**art).on_conflict_do_nothing(
+                constraint="uq_news_url")
+            res = db.execute(stmt)
+            inserted += res.rowcount or 0
     stats = {"candidates": len(candidates), "inserted": inserted,
              "skipped": len(candidates) - len(fresh)}
     log.info("leconomiste news done: %s", stats)

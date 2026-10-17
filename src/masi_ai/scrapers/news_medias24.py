@@ -49,6 +49,8 @@ def collect_medias24_news(max_articles: int = 60, workers: int = 8) -> dict:
     from bs4 import BeautifulSoup
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+
     session = build_session({"Referer": "https://medias24.com/"})
     urls: list[str] = []
     for cat in CATEGORIES:
@@ -81,8 +83,10 @@ def collect_medias24_news(max_articles: int = 60, workers: int = 8) -> dict:
     inserted = 0
     with session_scope() as db:
         for art in arts:
-            db.add(NewsArticle(**art))
-            inserted += 1
+            stmt = pg_insert(NewsArticle).values(**art).on_conflict_do_nothing(
+                constraint="uq_news_url")
+            res = db.execute(stmt)
+            inserted += res.rowcount or 0
     stats = {"found": len(urls), "inserted": inserted, "skipped": len(urls) - len(fresh)}
     log.info("medias24 news done: %s", stats)
     return stats

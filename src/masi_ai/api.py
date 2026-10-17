@@ -115,7 +115,8 @@ def news(source: str | None = None, limit: int = Query(50, le=200)):
         q = db.query(NewsArticle)
         if source:
             q = q.filter(NewsArticle.source == source)
-        arts = q.order_by(desc(NewsArticle.published_at)).limit(limit).all()
+        arts = q.order_by(desc(NewsArticle.published_at),
+                         desc(NewsArticle.id)).limit(limit).all()
         return [NewsOut(source=a.source, title=a.title, url=a.url,
                         published_at=a.published_at) for a in arts]
 
