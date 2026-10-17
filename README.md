@@ -25,8 +25,8 @@ docker compose up -d --build
 ```
 
 - API: http://localhost:8000 (`/health`, `/api/v1/...`)
-- **Dashboard: http://localhost:8000** — market terminal with all companies,
-  price charts, live order books, news feed and macro indicators
+- **Dashboard: http://localhost:8501** — Streamlit market terminal (companies,
+  price charts, order books, news, macro)
 - Postgres: localhost:5432
 
 The `worker` container runs the scheduler; the `api` container serves the REST API.
@@ -39,6 +39,12 @@ python3 run.py                  # creates .venv, installs deps, waits for
 python3 run.py --api            # same, but starts the API server instead
 python3 run.py --bootstrap-only # only load the data, then exit
 python3 run.py --full-history   # also pull FULL OHLCV history from BVC
+```
+
+To open the dashboard locally (after the data is loaded):
+
+```bash
+python -m masi_ai.cli dashboard   # → http://localhost:8501
 ```
 
 `run.py` does everything: Python version check, project virtualenv,

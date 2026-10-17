@@ -51,6 +51,23 @@ services:
     networks:
       - masi_net
 
+  dashboard:
+    build: .
+    container_name: masi_dashboard
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+    ports:
+      - "8501:8501"
+    command: ["python", "-m", "masi_ai.cli", "dashboard"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - masi_net
+
 networks:
   masi_net:
     driver: bridge

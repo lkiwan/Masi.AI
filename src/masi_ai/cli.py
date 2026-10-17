@@ -9,6 +9,7 @@ Commands:
   macro               collect macro indicators (World Bank, IMF, MASI)
   api                 run the FastAPI server
   scheduler           run the APScheduler worker
+  dashboard           run the Streamlit dashboard
 """
 from __future__ import annotations
 
@@ -32,6 +33,7 @@ def main() -> None:
     sub.add_parser("macro")
     sub.add_parser("api")
     sub.add_parser("scheduler")
+    sub.add_parser("dashboard")
 
     args = ap.parse_args()
 
@@ -70,6 +72,13 @@ def main() -> None:
     elif args.cmd == "api":
         import uvicorn
         uvicorn.run("masi_ai.api:app", host="0.0.0.0", port=8000)
+    elif args.cmd == "dashboard":
+        import os
+        from pathlib import Path
+        dash = Path(__file__).resolve().parent / "dashboard.py"
+        os.execvp("streamlit", ["streamlit", "run", str(dash),
+                                "--server.port", "8501",
+                                "--server.address", "0.0.0.0"])
     elif args.cmd == "scheduler":
         from .scheduler import main as sched_main
         sched_main()

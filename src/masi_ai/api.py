@@ -183,36 +183,3 @@ def market_overview():
                 volume_titles=r.volume_titles, volume_mad=r.volume_mad,
                 session_date=r.session_date))
         return out
-
-
-# ------------------------------------------------------------- dashboard app
-from fastapi.staticfiles import StaticFiles  # noqa: E402
-from pathlib import Path as _Path  # noqa: E402
-
-_STATIC_DIR = _Path(__file__).resolve().parent / "static"
-if _STATIC_DIR.exists():
-    app.mount("/", StaticFiles(directory=str(_STATIC_DIR), html=True), name="dashboard")
-class MacroOut(BaseModel):
-    indicator: str
-    date: date
-    value: float
-    source: str
-
-
-@app.get("/api/v1/macro/indicators", response_model=list[str])
-def macro_indicators():
-    with SessionLocal() as db:
-        rows = db.query(MacroData.indicator).distinct().order_by(MacroData.indicator).all()
-        return [r[0] for r in rows]
-
-
-@app.get("/api/v1/macro/{indicator}", response_model=list[MacroOut])
-def macro_series(indicator: str, limit: int = Query(100, le=1000)):
-    with SessionLocal() as db:
-        rows = (db.query(MacroData)
-                .filter(MacroData.indicator == indicator)
-                .order_by(desc(MacroData.ref_date)).limit(limit).all())
-        if not rows:
-            raise HTTPException(404, "unknown indicator")
-        return [MacroOut(indicator=r.indicator, date=r.ref_date,
-                         value=r.value, source=r.source) for r in rows]
