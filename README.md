@@ -29,6 +29,22 @@ docker compose up -d --build
 
 The `worker` container runs the scheduler; the `api` container serves the REST API.
 
+## Quick start (one file, no Docker)
+
+```bash
+python3 run.py                  # creates .venv, installs deps, waits for
+                                # Postgres, loads all data, starts scheduler
+python3 run.py --api            # same, but starts the API server instead
+python3 run.py --bootstrap-only # only load the data, then exit
+python3 run.py --full-history   # also pull FULL OHLCV history from BVC
+```
+
+`run.py` does everything: Python version check, project virtualenv,
+dependency install, Postgres wait, table creation, then the first data load
+(companies → macro → price history → news → order books). Needs Postgres
+running — either `docker compose up -d postgres` or your own server
+(configured in `.env`).
+
 ## Manual runs
 
 ```bash
