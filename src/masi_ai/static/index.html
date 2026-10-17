@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Masi.AI — Casablanca Stock Exchange Terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">M</div>
+    <div>
+      <div class="brand-name">MASI.AI</div>
+      <div class="brand-sub">Casablanca Stock Exchange</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="index-box">
+      <span class="lbl">MASI</span>
+      <span class="mono" id="masi-value">—</span>
+      <span class="mono" id="masi-chg">—</span>
+    </div>
+    <div class="index-box">
+      <span class="lbl">Session</span>
+      <span class="mono" id="clock">—</span>
+      <span class="status-dot" id="status-dot"></span>
+      <span class="lbl" id="status-text">—</span>
+    </div>
+  </div>
+</header>
+
+<main class="layout">
+  <!-- Instruments -->
+  <section class="panel instruments">
+    <div class="panel-head">
+      <span class="panel-title">Listed companies</span>
+      <span class="count mono" id="inst-count"></span>
+    </div>
+    <div class="search-wrap">
+      <input type="text" id="search" placeholder="Search ticker or name…" autocomplete="off">
+    </div>
+    <div class="table-head">
+      <button data-sort="ticker">Ticker</button>
+      <button data-sort="price" class="num">Last</button>
+      <button data-sort="change_pct" class="num">Chg %</button>
+    </div>
+    <div class="inst-list" id="inst-list"></div>
+  </section>
+
+  <!-- Detail -->
+  <section class="detail">
+    <div class="panel quote-head">
+      <div>
+        <div class="q-name" id="q-name">—</div>
+        <div class="q-ticker mono" id="q-ticker">—</div>
+      </div>
+      <div class="q-numbers">
+        <div class="q-price mono" id="q-price">—</div>
+        <div class="q-chg mono" id="q-chg">—</div>
+      </div>
+      <div class="q-meta">
+        <div><span class="lbl">Volume</span><span class="mono" id="q-vol">—</span></div>
+        <div><span class="lbl">Turnover</span><span class="mono" id="q-turn">—</span></div>
+        <div><span class="lbl">Session</span><span class="mono" id="q-date">—</span></div>
+      </div>
+    </div>
+
+    <div class="panel chart-panel">
+      <div class="panel-head">
+        <span class="panel-title">Price history</span>
+        <div class="range-btns" id="range-btns">
+          <button data-range="30" class="active">1M</button>
+          <button data-range="90">3M</button>
+          <button data-range="365">1Y</button>
+          <button data-range="0">Max</button>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="price-chart"></canvas></div>
+    </div>
+
+    <div class="panel ob-panel">
+      <div class="panel-head">
+        <span class="panel-title">Order book <span class="lbl">— carnet d'ordres</span></span>
+        <span class="lbl mono" id="ob-time"></span>
+      </div>
+      <div class="ob-cols">
+        <div class="ob-side">
+          <div class="ob-title bids">Bids</div>
+          <div id="ob-bids"></div>
+        </div>
+        <div class="ob-side">
+          <div class="ob-title asks">Asks</div>
+          <div id="ob-asks"></div>
+        </div>
+      </div>
+      <div class="spread-row">
+        <span class="lbl">Spread</span>
+        <span class="mono" id="ob-spread">—</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- News + macro -->
+  <aside class="side">
+    <div class="panel news-panel">
+      <div class="panel-head"><span class="panel-title">Latest news</span></div>
+      <div class="news-list" id="news-list"></div>
+    </div>
+    <div class="panel macro-panel">
+      <div class="panel-head"><span class="panel-title">Macro — Morocco</span></div>
+      <div id="macro-list"></div>
+    </div>
+  </aside>
+</main>
+
+<footer class="foot">
+  <span>Data: Medias24 · L'Économiste · World Bank · IMF · Bourse de Casablanca</span>
+  <span class="mono" id="foot-updated"></span>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -25,6 +25,8 @@ docker compose up -d --build
 ```
 
 - API: http://localhost:8000 (`/health`, `/api/v1/...`)
+- **Dashboard: http://localhost:8000** — market terminal with all companies,
+  price charts, live order books, news feed and macro indicators
 - Postgres: localhost:5432
 
 The `worker` container runs the scheduler; the `api` container serves the REST API.

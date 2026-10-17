@@ -131,7 +131,67 @@ def news_detail(article_id: int):
                 "published_at": a.published_at, "body": a.body}
 
 
-# ---------------------------------------------------------------------- macro
+# --------------------------------------------------------------------- market
+class MarketRow(BaseModel):
+    ticker: str
+    name: str
+    price: float | None
+    prev_close: float | None
+    change_pct: float | None
+    volume_titles: int | None
+    volume_mad: float | None
+    session_date: date | None
+
+
+@app.get("/api/v1/market/overview", response_model=list[MarketRow])
+def market_overview():
+    """Latest quote per ticker with day change vs previous close."""
+    with SessionLocal() as db:
+        ranked = (
+            db.query(
+                DailyBar.ticker.label("ticker"),
+                DailyBar.session_date.label("session_date"),
+                DailyBar.close.label("close"),
+                DailyBar.volume_titles.label("volume_titles"),
+                DailyBar.volume_mad.label("volume_mad"),
+                func.row_number().over(
+                    partition_by=DailyBar.ticker,
+                    order_by=desc(DailyBar.session_date),
+                ).label("rn"),
+            ).subquery()
+        )
+        latest = db.query(ranked).filter(ranked.c.rn == 1).subquery()
+        prev = db.query(ranked).filter(ranked.c.rn == 2).subquery()
+        rows = (
+            db.query(Instrument.ticker, Instrument.name,
+                     latest.c.close, latest.c.session_date,
+                     latest.c.volume_titles, latest.c.volume_mad,
+                     prev.c.close.label("prev_close"))
+            .outerjoin(latest, latest.c.ticker == Instrument.ticker)
+            .outerjoin(prev, prev.c.ticker == Instrument.ticker)
+            .filter(Instrument.active.is_(True))
+            .order_by(Instrument.ticker).all()
+        )
+        out = []
+        for r in rows:
+            chg = None
+            if r.close and r.prev_close:
+                chg = round((r.close - r.prev_close) / r.prev_close * 100, 2)
+            out.append(MarketRow(
+                ticker=r.ticker, name=r.name,
+                price=r.close, prev_close=r.prev_close, change_pct=chg,
+                volume_titles=r.volume_titles, volume_mad=r.volume_mad,
+                session_date=r.session_date))
+        return out
+
+
+# ------------------------------------------------------------- dashboard app
+from fastapi.staticfiles import StaticFiles  # noqa: E402
+from pathlib import Path as _Path  # noqa: E402
+
+_STATIC_DIR = _Path(__file__).resolve().parent / "static"
+if _STATIC_DIR.exists():
+    app.mount("/", StaticFiles(directory=str(_STATIC_DIR), html=True), name="dashboard")
 class MacroOut(BaseModel):
     indicator: str
     date: date
