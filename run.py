@@ -25,9 +25,19 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+
+# Clean up broken certificate bundle paths set by some Windows installers (e.g. PostgreSQL)
+for env_var in ("CURL_CA_BUNDLE", "SSL_CERT_FILE", "REQUESTS_CA_BUNDLE"):
+    val = os.environ.get(env_var)
+    if val and not Path(val).exists():
+        del os.environ[env_var]
+
 SRC = ROOT / "src"
 VENV = ROOT / ".venv"
-VENV_PY = VENV / "bin" / "python"
+if sys.platform == "win32":
+    VENV_PY = VENV / "Scripts" / "python.exe"
+else:
+    VENV_PY = VENV / "bin" / "python"
 
 
 def ensure_venv() -> None:
@@ -41,7 +51,11 @@ def ensure_venv() -> None:
         run([str(VENV_PY), "-m", "pip", "install", "--upgrade", "pip", "-q"])
         run([str(VENV_PY), "-m", "pip", "install", "-q", "-r", str(ROOT / "requirements.txt")])
     os.environ["MASI_AI_VENV"] = "1"
-    os.execv(str(VENV_PY), [str(VENV_PY), str(Path(__file__).resolve()), *sys.argv[1:]])
+    if sys.platform == "win32":
+        code = subprocess.call([str(VENV_PY), str(Path(__file__).resolve()), *sys.argv[1:]])
+        sys.exit(code)
+    else:
+        os.execv(str(VENV_PY), [str(VENV_PY), str(Path(__file__).resolve()), *sys.argv[1:]])
 
 MIN_PYTHON = (3, 10)
 
